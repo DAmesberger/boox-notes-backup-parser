@@ -1,0 +1,6 @@
+backup/
+bin/
+lib/
+lib64
+pyvenv.cfg
+*.png

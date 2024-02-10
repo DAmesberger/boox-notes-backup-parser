@@ -3,12 +3,14 @@ import sqlite3
 import json
 import struct
 import skia
+from tabulate import tabulate
 import argparse
+
 try:
-  from IPython.display import display, Image
-  iPython_available = True
+    from IPython.display import display, Image
+    iPython_available = True
 except:
-    pass
+    iPython_available = False
 
 dirName = "/home/amd/work/reverse/Test4"
 
@@ -47,6 +49,9 @@ def read_db(dir):
     cursor = con.execute("SELECT * FROM NoteModel")
     notebooks = {"basedir": dir, "notebooks": [] }
     for row in cursor:
+        if row['pageNameList'] is None:
+            print(f"Warning: Missing pageNameList for row with uniqueId: {row['uniqueId']}. Skipping this row.")
+            continue
         pageNameList = json.loads(row['pageNameList'])
         pageInfo = json.loads(row['notePageInfo'])
         notebook = { "name": row['title'], "id": row['uniqueId'], "info": pageInfo, "pages": [] }
@@ -220,13 +225,18 @@ parser.add_argument('--show', dest='show', action='store_true',
 parser.add_argument('--find', dest="words", nargs='*', help='find words on page', default=[])
 args = parser.parse_args()
 
-if args.notebook == None:
+if args.notebook is None:
     notebooks = read_db(args.dir)
-    notebook_names = [notebook['name'] for notebook in notebooks['notebooks']]
-    notebook_pages = { notebook['name']: [page['pageNr'] for page in notebook['pages']] for notebook in notebooks['notebooks'] }
-    print("Notebooks:")
-    for notebook in notebook_names:
-        print(f"  {notebook}:\t\t\t\t{len(notebook_pages[notebook])} pages")
+    table_data = [(notebook['name'], len(notebook['pages'])) for notebook in notebooks['notebooks']]
+    
+    # Respect the number of columns available in the terminal
+    term_width = os.get_terminal_size().columns
+    
+    # Format and print table
+    table = tabulate(table_data, headers=['Notebook', 'Pages'], tablefmt="grid", stralign="left", numalign="right")
+    if len(table) > term_width:
+        table = tabulate(table_data, headers=['Notebook', 'Pages'], tablefmt="plain", stralign="left", numalign="right")
+    print(table)
 else:
     dbg = False
     if args.page != None:
